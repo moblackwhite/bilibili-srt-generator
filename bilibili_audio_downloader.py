@@ -1,26 +1,30 @@
-from urllib import error
 import requests
 import urllib
 import time
 import argparse
 import csv
+import os
+
+import ssl
+
+ssl._create_default_https_context = ssl._create_unverified_context
 
 
-def getData(url):
+def get_data(url):
     resp = requests.get(url)
     if resp.status_code >= 300:
         print("HTTP ERROR:", resp.status_code)
         return False
-    jsonData = resp.json()
-    if "data" not in jsonData:
+    json_data = resp.json()
+    if "data" not in json_data:
         print("找不到数据")
         return False
     return resp.json()['data']
 
 
-def getCidAndTitle(bvid, p=1):
+def get_cid_and_title(bvid, p=1):
     url = 'https://api.bilibili.com/x/web-interface/view?bvid=' + bvid
-    data = getData(url)
+    data = get_data(url)
     if data != False:
         title = data['title']
         cid = data['pages'][p - 1]['cid']
@@ -29,7 +33,7 @@ def getCidAndTitle(bvid, p=1):
         return False, False
 
 
-def getInformation(bvList):
+def get_information(bvList):
     infoList = []
     for bvid in bvList:
         item = []
@@ -37,13 +41,13 @@ def getInformation(bvList):
             print("BVID 格式错误")
             continue
         elif len(bvid) == 12:
-            cid, title = getCidAndTitle(bvid)
-            if (cid == False):
+            cid, title = get_cid_and_title(bvid)
+            if cid == False:
                 continue
             item.append(bvid)
         else:
-            cid, title = getCidAndTitle(bvid[:12], int(bvid[13:]))
-            if (cid == False):
+            cid, title = get_cid_and_title(bvid[:12], int(bvid[13:]))
+            if cid == False:
                 continue
             item.append(bvid[:12])
         item.append(cid)
@@ -53,13 +57,28 @@ def getInformation(bvList):
     return infoList
 
 
-def getAudio(infoList):
-    baseUrl = 'http://api.bilibili.com/x/player/playurl?fnval=16&'
+def get_audio(info_list, subtitle_list=None):
+    base_url = 'https://api.bilibili.com/x/player/playurl?fnval=16&'
 
-    for item in infoList:
+    for idx, item in enumerate(info_list):
         st = time.time()
         bvid, cid, title = item[0], item[1], item[2]
-        url = baseUrl + 'bvid=' + bvid + '&cid=' + cid
+
+        if "/" in title:
+            title = " ".join(title.split("/"))
+        if '\\' in title:
+            title = " ".join(title.split("\\"))
+
+        if subtitle_list is None:
+            file_name = "{}.mp3".format(title)
+        else:
+            file_name = "{}- {} - {} .mp3".format(title, 'P' + str(idx + 1), subtitle_list[idx])
+        path = 'download/' + file_name
+
+        if os.path.exists(path):
+            continue
+
+        url = base_url + 'bvid=' + bvid + '&cid=' + cid
 
         audioUrl = requests.get(url).json()['data']['dash']['audio'][0]['baseUrl']
 
@@ -75,33 +94,30 @@ def getAudio(infoList):
             ('Connection', 'keep-alive'),
         ]
         urllib.request.install_opener(opener)
-        if "/" in title:
-            title = " ".join(title.split("/"))
-        if '\\' in title:
-            title = " ".join(title.split("\\"))
+
         try:
-            urllib.request.urlretrieve(url=audioUrl, filename='download/' + title + '.mp3')
-        except (HTTPError, URLError, ContentTooShortError) as e:
+            urllib.request.urlretrieve(url=audioUrl, filename=path)
+        except Exception as e:
             print("下载失败，因为：", e)
         ed = time.time()
-        print(str(round(ed - st, 2)) + ' seconds download finish:', title)
+        print(str(round(ed - st, 2)) + ' seconds download finish:', file_name)
         time.sleep(1)
 
 
-def getBVList(arg, extra_args):
-    BVList = []
+def get_bv_list(arg, extra_args):
+    bv_list = []
     if arg.f:
         with open(extra_args[0], 'r') as f:
             reader = csv.reader(f)
             for line in reader:
-                BVList.append(line[0])
+                bv_list.append(line[0])
     elif arg.c:
-        BVList = [i for i in extra_args]
+        bv_list = [i for i in extra_args]
 
     else:
         raise 'Please select an input method.'
 
-    return BVList
+    return bv_list
 
 
 if __name__ == '__main__':
@@ -109,10 +125,10 @@ if __name__ == '__main__':
     parser.add_argument('-f', action='store_true')
     parser.add_argument('-c', action='store_true')
     args, extra_args = parser.parse_known_args()
-    BVList = getBVList(args, extra_args)
+    BVList = get_bv_list(args, extra_args)
 
     print(f'Downloader Start! {BVList}')
     st = time.time()
-    getAudio(getInformation(BVList))
+    get_audio(get_information(BVList))
     ed = time.time()
     print('Download Finish All! Time consuming:', str(round(ed - st, 2)) + ' seconds')
