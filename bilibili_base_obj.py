@@ -72,3 +72,8 @@ class BiliBiliVideo:
                 state_map['sub_videos'].append({'title': title})
 
         return state_map
+
+class SubVideo:
+    def __init__(self, title):
+        self.title = title
+

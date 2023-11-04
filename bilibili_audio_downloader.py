@@ -99,6 +99,8 @@ def get_audio(info_list, subtitle_list=None):
             urllib.request.urlretrieve(url=audioUrl, filename=path)
         except Exception as e:
             print("下载失败，因为：", e)
+            os.remove(path)
+
         ed = time.time()
         print(str(round(ed - st, 2)) + ' seconds download finish:', file_name)
         time.sleep(1)

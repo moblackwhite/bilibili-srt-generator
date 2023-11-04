@@ -1,3 +1,5 @@
 /venv/
 /.idea/**
-/download/audio/
+/related-data/audio/
+/related-data/tmp/
+/__pycache__/
