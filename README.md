@@ -1,6 +1,4 @@
+# Bilibili-SRT
 
-
-
-https://github.com/nuster1128/bilibiliAudioDownloader
-
+This Project is facilitate the extraction of letters from the [Bilibili](https://www.bilibili.com/) websiite.
 
